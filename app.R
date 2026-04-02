@@ -49,11 +49,35 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
+  preloaded_dataset <- getOption("glhlth562.preloaded_dataset", default = NULL)
+  preloaded_at <- getOption("glhlth562.preloaded_at", default = NULL)
+
   dataset_state <- reactiveValues(
-    data = NULL,
-    status = "Loading live data...",
-    loaded_at = NULL
+    data = preloaded_dataset,
+    status = if (!is.null(preloaded_dataset)) {
+      paste(
+        "Loaded",
+        nrow(preloaded_dataset),
+        "rows at",
+        format(preloaded_at %||% Sys.time(), "%Y-%m-%d %H:%M:%S")
+      )
+    } else {
+      "Loading live data..."
+    },
+    loaded_at = preloaded_at
   )
+
+  initialize_inputs_from_dataset <- function(dataset) {
+    choices <- available_country_choices(dataset)
+
+    updateSelectInput(session, "country", choices = choices, selected = "United States")
+    updateSelectInput(
+      session,
+      "compare_country",
+      choices = c("None" = "", choices),
+      selected = ""
+    )
+  }
 
   load_dataset <- function() {
     dataset_state$status <- "Fetching OWID, WHO, and World Bank data..."
@@ -69,7 +93,6 @@ server <- function(input, output, session) {
         ) |>
           dplyr::filter(year >= 2000, year <= 2025)
 
-        choices <- available_country_choices(dataset)
         dataset_state$data <- dataset
         dataset_state$loaded_at <- Sys.time()
         dataset_state$status <- paste(
@@ -79,13 +102,7 @@ server <- function(input, output, session) {
           format(dataset_state$loaded_at, "%Y-%m-%d %H:%M:%S")
         )
 
-        updateSelectInput(session, "country", choices = choices, selected = "United States")
-        updateSelectInput(
-          session,
-          "compare_country",
-          choices = c("None" = "", choices),
-          selected = ""
-        )
+        initialize_inputs_from_dataset(dataset)
       },
       error = function(error) {
         dataset_state$status <- paste("Data load failed:", conditionMessage(error))
@@ -97,8 +114,15 @@ server <- function(input, output, session) {
     load_dataset()
   })
 
+  observe({
+    req(dataset_state$data)
+    initialize_inputs_from_dataset(dataset_state$data)
+  })
+
   session$onFlushed(function() {
-    load_dataset()
+    if (is.null(dataset_state$data)) {
+      load_dataset()
+    }
   }, once = TRUE)
 
   output$year_slider_ui <- renderUI({

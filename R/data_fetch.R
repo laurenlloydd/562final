@@ -22,7 +22,11 @@ fetch_text_response <- function(url, query = list()) {
 }
 
 fetch_json_response <- function(url, query = list()) {
-  jsonlite::fromJSON(fetch_text_response(url, query = query), flatten = TRUE)
+  jsonlite::fromJSON(
+    fetch_text_response(url, query = query),
+    simplifyVector = TRUE,
+    flatten = TRUE
+  )
 }
 
 fetch_csv_response <- function(url) {
@@ -67,7 +71,11 @@ fetch_who_indicator <- function(indicator_code, value_name) {
   pages <- list()
 
   while (!is.null(next_url) && nzchar(next_url)) {
-    payload <- jsonlite::fromJSON(fetch_text_response(next_url), flatten = TRUE)
+    payload <- jsonlite::fromJSON(
+      fetch_text_response(next_url),
+      simplifyVector = TRUE,
+      flatten = TRUE
+    )
     pages[[length(pages) + 1]] <- tibble::as_tibble(payload$value %||% data.frame())
     next_url <- payload[["@odata.nextLink"]] %||% NULL
   }

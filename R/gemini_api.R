@@ -47,19 +47,48 @@ build_gemini_summary_payload <- function(data_subset) {
 }
 
 extract_gemini_text <- function(response_body) {
-  candidates <- response_body$candidates
+  find_first_text <- function(x) {
+    if (is.null(x)) {
+      return(NULL)
+    }
 
-  if (length(candidates) == 0) {
-    return(NULL)
+    if (is.character(x)) {
+      non_empty <- trimws(x[nzchar(trimws(x))])
+      return(non_empty[1] %||% NULL)
+    }
+
+    if (is.data.frame(x)) {
+      if ("text" %in% names(x)) {
+        non_empty <- trimws(x$text[nzchar(trimws(x$text))])
+        return(non_empty[1] %||% NULL)
+      }
+
+      for (column_name in names(x)) {
+        text_value <- find_first_text(x[[column_name]])
+        if (!is.null(text_value)) {
+          return(text_value)
+        }
+      }
+    }
+
+    if (is.list(x)) {
+      if (!is.null(x$text) && is.character(x$text)) {
+        non_empty <- trimws(x$text[nzchar(trimws(x$text))])
+        return(non_empty[1] %||% NULL)
+      }
+
+      for (item in x) {
+        text_value <- find_first_text(item)
+        if (!is.null(text_value)) {
+          return(text_value)
+        }
+      }
+    }
+
+    NULL
   }
 
-  parts <- candidates[[1]]$content$parts
-
-  if (length(parts) == 0 || is.null(parts[[1]]$text)) {
-    return(NULL)
-  }
-
-  trimws(parts[[1]]$text)
+  find_first_text(response_body$candidates)
 }
 
 generate_summary <- function(data_subset) {
@@ -76,47 +105,45 @@ generate_summary <- function(data_subset) {
 
   payload <- build_gemini_summary_payload(data_subset)
   prompt <- paste0(
-    "Summarize trends in measles cases and vaccination coverage for ",
+    "You are a public health analyst. Based on the following data for ",
     payload$country,
     " from ",
     payload$start_year,
     " to ",
     payload$end_year,
-    ". Explain any increases in cases and whether they may relate to vaccination changes. Keep under 150 words.\n\n",
+    ", summarize the relationship between measles cases and vaccination coverage. ",
+    "Highlight any notable increases in cases and explain whether they may be associated ",
+    "with declines in vaccination. Keep the explanation in 200 words and accessible ",
+    "to a general audience.\n\n",
     "Use only the summarized dataset below. If data are sparse, say so briefly.\n",
     jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", na = "null", pretty = TRUE)
   )
 
-  model <- Sys.getenv("GEMINI_MODEL", unset = "gemini-2.5-flash")
-  url <- paste0(
-    "https://generativelanguage.googleapis.com/v1beta/models/",
-    model,
-    ":generateContent"
-  )
-
-  body <- list(
-    contents = list(
-      list(
-        parts = list(
-          list(text = prompt)
-        )
-      )
-    ),
-    generationConfig = list(
-      temperature = 0.3,
-      maxOutputTokens = 220
-    )
-  )
-
   response_text <- tryCatch(
     {
-      response <- httr2::request(url) |>
-        httr2::req_headers(`x-goog-api-key` = api_key) |>
-        httr2::req_body_json(body, auto_unbox = TRUE) |>
+      response <- httr2::request("https://generativelanguage.googleapis.com/v1beta") |>
+        httr2::req_url_path_append("models/gemini-2.5-flash:generateContent") |>
+        httr2::req_url_query(key = api_key) |>
+        httr2::req_body_json(
+          list(
+            contents = list(
+              list(
+                parts = list(
+                  list(text = prompt)
+                )
+              )
+            )
+          ),
+          auto_unbox = TRUE
+        ) |>
         httr2::req_timeout(45) |>
         httr2::req_perform()
 
-      parsed <- jsonlite::fromJSON(httr2::resp_body_string(response), simplifyVector = FALSE)
+      parsed <- jsonlite::fromJSON(
+        httr2::resp_body_string(response),
+        simplifyVector = TRUE,
+        flatten = TRUE
+      )
       extract_gemini_text(parsed)
     },
     error = function(error) {
