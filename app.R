@@ -28,7 +28,7 @@ ui <- fluidPage(
       textOutput("data_status"),
       tags$hr(),
       strong("Gemini Notes"),
-      p("Set GEMINI_API_KEY in .Renviron to enable natural-language summaries.")
+      p("Gemini is optional. If no API key is set, the app shows a built-in summary from the selected data.")
     ),
     mainPanel(
       width = 9,
@@ -120,7 +120,7 @@ server <- function(input, output, session) {
   })
 
   session$onFlushed(function() {
-    if (is.null(dataset_state$data)) {
+    if (is.null(isolate(dataset_state$data))) {
       load_dataset()
     }
   }, once = TRUE)
@@ -153,18 +153,8 @@ server <- function(input, output, session) {
     subset
   })
 
-  primary_country_data <- reactive({
-    req(dataset_state$data, input$country, input$year_range)
-
-    subset <- filter_country_data(dataset_state$data, input$country, input$year_range)
-    validation_message <- validate_country_subset(subset)
-
-    validate(need(is.null(validation_message), validation_message))
-    subset
-  })
-
   summary_text <- reactive({
-    generate_summary(primary_country_data())
+    generate_summary(selected_data())
   })
 
   output$data_status <- renderText({

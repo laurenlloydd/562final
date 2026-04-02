@@ -99,6 +99,15 @@ summarise_country_metrics <- function(data) {
       latest_mcv2 = last_non_missing(mcv2_who),
       latest_incidence_per_100k = last_non_missing(measles_incidence_per_100k),
       .groups = "drop"
+    ) |>
+    dplyr::rename(
+      "Country" = location,
+      "Years Covered" = years_covered,
+      "Latest Year" = latest_year,
+      "Latest Reported Measles Cases" = latest_measles_cases,
+      "Latest MCV1 Coverage (%)" = latest_mcv1,
+      "Latest MCV2 Coverage (%)" = latest_mcv2,
+      "Latest Measles Incidence (per 100k)" = latest_incidence_per_100k
     )
 }
 

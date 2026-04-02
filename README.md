@@ -111,10 +111,14 @@ Before building any request in this project, confirm the endpoint shape, path pa
 3. `R/gemini_api.R`
    - Summarizes the selected subset
    - Calls Gemini with `request("https://generativelanguage.googleapis.com/v1beta")`, `req_url_path_append()`, and `req_url_query(key = GEMINI_API_KEY)`
+   - Sends Gemini both selected countries when a comparison country is chosen, along with per-country trend summaries and yearly metrics for time-based interpretation
+   - Falls back to a deterministic local summary when `GEMINI_API_KEY` is not set or the Gemini request fails
    - Parses Gemini JSON responses with `simplifyVector = TRUE`
 4. `app.R`
    - Builds the UI and server logic
    - Supports single-country analysis with optional comparison country
+   - Generates the AI summary from the same selected-country subset used by the plots, so the text can compare countries when a comparison is selected
+   - Uses `isolate()` inside the startup `session$onFlushed()` callback so the initial data load does not read a reactive value outside a reactive consumer
    - Renders plotly versions of ggplot time-series and scatter plots
 
 ## Setup
@@ -181,4 +185,4 @@ git push -u origin main
 
 - The original OWID URL in the prompt (`https://ourworldindata.org/measles.csv`) no longer resolves. The app uses the live OWID grapher CSV endpoints instead.
 - WHO data are used when available and are merged with OWID by `iso3` and `year`.
-- If Gemini is not configured, the app still runs and shows a configuration message in the summary panel.
+- If Gemini is not configured, the app still runs and shows a built-in summary in the summary panel.
