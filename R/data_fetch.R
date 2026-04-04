@@ -37,6 +37,39 @@ fetch_csv_response <- function(url) {
   )
 }
 
+fetch_owid_indicator_response <- function(indicator_id, suffix = "data") {
+  fetch_json_response(
+    sprintf("https://api.ourworldindata.org/v1/indicators/%s.%s.json", indicator_id, suffix)
+  )
+}
+
+fetch_owid_indicator_data <- function(indicator_id, value_name, value_transform = as.numeric) {
+  data_payload <- fetch_owid_indicator_response(indicator_id, suffix = "data")
+  metadata_payload <- fetch_owid_indicator_response(indicator_id, suffix = "metadata")
+
+  entity_lookup <- tibble::as_tibble(metadata_payload$dimensions$entities$values) |>
+    dplyr::transmute(
+      entity_id = as.integer(id),
+      location = name,
+      iso3 = code
+    )
+
+  tibble::tibble(
+    entity_id = as.integer(data_payload$entities),
+    year = as.integer(data_payload$years),
+    raw_value = data_payload$values
+  ) |>
+    dplyr::left_join(entity_lookup, by = "entity_id") |>
+    dplyr::transmute(
+      location,
+      iso3,
+      year,
+      !!value_name := value_transform(raw_value)
+    ) |>
+    dplyr::filter(!is.na(iso3), nchar(iso3) == 3, !is.na(year)) |>
+    dplyr::distinct()
+}
+
 fetch_owid_measles_cases <- function(
   url = "https://ourworldindata.org/grapher/reported-cases-of-measles.csv"
 ) {
@@ -63,6 +96,27 @@ fetch_owid_mcv1 <- function(
     ) |>
     dplyr::filter(!is.na(iso3), nchar(iso3) == 3, !is.na(year)) |>
     dplyr::distinct()
+}
+
+fetch_owid_measles_prevalence_children <- function(indicator_id = 1182306) {
+  fetch_owid_indicator_data(indicator_id, "measles_prevalence_children")
+}
+
+fetch_owid_vaccine_attitudes <- function(indicator_id = 1075290) {
+  fetch_owid_indicator_data(indicator_id, "vaccine_attitudes_disagree_effective")
+}
+
+fetch_owid_regions <- function(indicator_id = 900801) {
+  fetch_owid_indicator_data(
+    indicator_id,
+    "owid_region",
+    value_transform = as.character
+  ) |>
+    dplyr::arrange(iso3, dplyr::desc(year)) |>
+    dplyr::group_by(iso3) |>
+    dplyr::slice_head(n = 1) |>
+    dplyr::ungroup() |>
+    dplyr::select(location, iso3, owid_region)
 }
 
 fetch_who_indicator <- function(indicator_code, value_name) {
@@ -147,12 +201,18 @@ fetch_world_bank_population <- function(start_year = 2000, end_year = 2025) {
 fetch_all_runtime_data <- function(start_year = 2000, end_year = 2025) {
   owid_cases <- fetch_owid_measles_cases()
   owid_mcv1 <- fetch_owid_mcv1()
+  owid_measles_prevalence <- fetch_owid_measles_prevalence_children()
+  owid_vaccine_attitudes <- fetch_owid_vaccine_attitudes()
+  owid_regions <- fetch_owid_regions()
   who_data <- fetch_who_measles_data()
   population <- fetch_world_bank_population(start_year = start_year, end_year = end_year)
 
   list(
     owid_cases = owid_cases,
     owid_mcv1 = owid_mcv1,
+    owid_measles_prevalence = owid_measles_prevalence,
+    owid_vaccine_attitudes = owid_vaccine_attitudes,
+    owid_regions = owid_regions,
     who_data = who_data,
     population = population
   )

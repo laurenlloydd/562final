@@ -26,16 +26,13 @@ ui <- fluidPage(
       tags$hr(),
       strong("Data Status"),
       textOutput("data_status"),
-      tags$hr(),
-      strong("Gemini Notes"),
-      p("Gemini is optional. If no API key is set, the app shows a built-in summary from the selected data.")
     ),
     mainPanel(
       width = 9,
       fluidRow(
         column(
           width = 12,
-          h3("AI Summary"),
+          h3("Summary"),
           uiOutput("summary_text")
         )
       ),
@@ -69,8 +66,13 @@ server <- function(input, output, session) {
 
   initialize_inputs_from_dataset <- function(dataset) {
     choices <- available_country_choices(dataset)
+    selected_country <- if ("United States" %in% choices) {
+      "United States"
+    } else {
+      choices[[1]] %||% ""
+    }
 
-    updateSelectInput(session, "country", choices = choices, selected = "United States")
+    updateSelectInput(session, "country", choices = choices, selected = selected_country)
     updateSelectInput(
       session,
       "compare_country",
@@ -93,13 +95,15 @@ server <- function(input, output, session) {
         ) |>
           dplyr::filter(year >= 2000, year <= 2025)
 
+        loaded_at <- Sys.time()
+
         dataset_state$data <- dataset
-        dataset_state$loaded_at <- Sys.time()
+        dataset_state$loaded_at <- loaded_at
         dataset_state$status <- paste(
           "Loaded",
           nrow(dataset),
           "rows at",
-          format(dataset_state$loaded_at, "%Y-%m-%d %H:%M:%S")
+          format(loaded_at, "%Y-%m-%d %H:%M:%S")
         )
 
         initialize_inputs_from_dataset(dataset)

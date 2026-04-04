@@ -19,6 +19,7 @@ project/
 ├── glhlth562-final.Rproj
 ├── run-all.R
 ├── app.R
+├── _site/                 # generated locally by run-all.R
 ├── R/
 │   ├── data_fetch.R
 │   ├── data_process.R
@@ -149,6 +150,8 @@ Or run the full pipeline plus app startup from the project root:
 ```bash
 Rscript run-all.R
 ```
+
+The project now includes [_site/index.html](/Users/lindseycobb/Desktop/562final/_site/index.html) as the local shell page for the app. `run-all.R` overwrites that file at startup so it points at the active localhost Shiny URL. Keep the `Rscript run-all.R` process running, then open or refresh `_site/index.html` in your browser.
 
 If you use RStudio, open `glhlth562-final.Rproj` to load the project with the repository root as the working directory.
 

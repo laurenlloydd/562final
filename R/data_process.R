@@ -56,7 +56,13 @@ build_analysis_dataset <- function(
 available_country_choices <- function(data) {
   data |>
     dplyr::filter(!is.na(location)) |>
-    dplyr::distinct(location) |>
+    dplyr::group_by(location) |>
+    dplyr::summarise(
+      coverage_rows = sum(!is.na(mcv1)),
+      case_rows = sum(!is.na(measles_cases)),
+      .groups = "drop"
+    ) |>
+    dplyr::filter(coverage_rows >= 2, case_rows >= 2) |>
     dplyr::arrange(location) |>
     dplyr::pull(location)
 }
