@@ -56,13 +56,7 @@ build_analysis_dataset <- function(
 available_country_choices <- function(data) {
   data |>
     dplyr::filter(!is.na(location)) |>
-    dplyr::group_by(location) |>
-    dplyr::summarise(
-      coverage_rows = sum(!is.na(mcv1)),
-      case_rows = sum(!is.na(measles_cases)),
-      .groups = "drop"
-    ) |>
-    dplyr::filter(coverage_rows >= 2, case_rows >= 2) |>
+    dplyr::distinct(location) |>
     dplyr::arrange(location) |>
     dplyr::pull(location)
 }
@@ -156,5 +150,6 @@ create_trend_plot_data <- function(data) {
 create_scatter_plot_data <- function(data) {
   data |>
     dplyr::filter(!is.na(mcv1), !is.na(measles_incidence_per_100k)) |>
+    dplyr::arrange(location, year) |>
     dplyr::mutate(plot_incidence = pmax(measles_incidence_per_100k, 0.01))
 }

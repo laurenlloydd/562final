@@ -23,16 +23,24 @@ ui <- fluidPage(
         choices = c("None" = "")
       ),
       uiOutput("year_slider_ui"),
+      checkboxInput(
+        "show_time_trendline",
+        "Show time-series trend lines",
+        value = FALSE
+      ),
       tags$hr(),
       strong("Data Status"),
       textOutput("data_status"),
+      tags$hr(),
+      strong("Gemini Notes"),
+      p("Gemini is optional. If no API key is set, the app shows a built-in summary from the selected data.")
     ),
     mainPanel(
       width = 9,
       fluidRow(
         column(
           width = 12,
-          h3("Summary"),
+          h3("AI Summary"),
           uiOutput("summary_text")
         )
       ),
@@ -66,13 +74,8 @@ server <- function(input, output, session) {
 
   initialize_inputs_from_dataset <- function(dataset) {
     choices <- available_country_choices(dataset)
-    selected_country <- if ("United States" %in% choices) {
-      "United States"
-    } else {
-      choices[[1]] %||% ""
-    }
 
-    updateSelectInput(session, "country", choices = choices, selected = selected_country)
+    updateSelectInput(session, "country", choices = choices, selected = "United States")
     updateSelectInput(
       session,
       "compare_country",
@@ -95,15 +98,13 @@ server <- function(input, output, session) {
         ) |>
           dplyr::filter(year >= 2000, year <= 2025)
 
-        loaded_at <- Sys.time()
-
         dataset_state$data <- dataset
-        dataset_state$loaded_at <- loaded_at
+        dataset_state$loaded_at <- Sys.time()
         dataset_state$status <- paste(
           "Loaded",
           nrow(dataset),
           "rows at",
-          format(loaded_at, "%Y-%m-%d %H:%M:%S")
+          format(dataset_state$loaded_at, "%Y-%m-%d %H:%M:%S")
         )
 
         initialize_inputs_from_dataset(dataset)
@@ -186,7 +187,27 @@ server <- function(input, output, session) {
           "<br>Value: ", comma(round(value, 2))
         )
       )
-    ) +
+    )
+
+    if (isTRUE(input$show_time_trendline)) {
+      plot <- plot +
+        geom_smooth(
+          aes(
+            x = year,
+            y = value,
+            group = interaction(location, series),
+            color = location
+          ),
+          method = "lm",
+          se = FALSE,
+          linewidth = 0.8,
+          linetype = "dashed",
+          alpha = 0.7,
+          inherit.aes = FALSE
+        )
+    }
+
+    plot <- plot +
       geom_line(linewidth = 0.9, na.rm = TRUE) +
       geom_point(size = 1.4, na.rm = TRUE) +
       facet_wrap(~metric, ncol = 1, scales = "free_y") +
@@ -217,7 +238,6 @@ server <- function(input, output, session) {
         x = mcv1,
         y = plot_incidence,
         color = location,
-        size = pmax(measles_cases, 1),
         text = paste0(
           "Country: ", location,
           "<br>Year: ", year,
@@ -227,8 +247,7 @@ server <- function(input, output, session) {
         )
       )
     ) +
-      geom_point(alpha = 0.75) +
-      geom_smooth(method = "lm", se = FALSE, linewidth = 0.8) +
+      geom_point(aes(size = pmax(measles_cases, 1)), alpha = 0.75, na.rm = TRUE) +
       scale_y_log10(labels = label_number(accuracy = 0.1)) +
       scale_size_continuous(labels = comma) +
       labs(

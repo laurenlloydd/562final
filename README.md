@@ -19,7 +19,6 @@ project/
 ├── glhlth562-final.Rproj
 ├── run-all.R
 ├── app.R
-├── _site/                 # generated locally by run-all.R
 ├── R/
 │   ├── data_fetch.R
 │   ├── data_process.R
@@ -121,6 +120,29 @@ Before building any request in this project, confirm the endpoint shape, path pa
    - Generates the AI summary from the same selected-country subset used by the plots, so the text can compare countries when a comparison is selected
    - Uses `isolate()` inside the startup `session$onFlushed()` callback so the initial data load does not read a reactive value outside a reactive consumer
    - Renders plotly versions of ggplot time-series and scatter plots
+   - Connects annual points in the scatterplot so country trajectories are visible over time
+
+## shinyapps.io Deployment
+
+Run the deployment script from the project root:
+
+```bash
+Rscript deploy_shinyapps.R
+```
+
+`deploy_shinyapps.R`:
+
+- Installs `rsconnect` if it is missing
+- Loads `rsconnect`
+- Sets shinyapps.io credentials with `rsconnect::setAccountInfo()`
+- Deploys the app from the current working directory with `rsconnect::deployApp()`
+- Prints the public URL in the format `https://<account-name>.shinyapps.io/<app-name>/`
+
+Specify your shinyapps.io credentials at the top of `deploy_shinyapps.R` in:
+
+- `account_name`
+- `account_token`
+- `account_secret`
 
 ## Setup
 
@@ -150,8 +172,6 @@ Or run the full pipeline plus app startup from the project root:
 ```bash
 Rscript run-all.R
 ```
-
-The project now includes [_site/index.html](/Users/lindseycobb/Desktop/562final/_site/index.html) as the local shell page for the app. `run-all.R` overwrites that file at startup so it points at the active localhost Shiny URL. Keep the `Rscript run-all.R` process running, then open or refresh `_site/index.html` in your browser.
 
 If you use RStudio, open `glhlth562-final.Rproj` to load the project with the repository root as the working directory.
 
