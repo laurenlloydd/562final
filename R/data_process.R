@@ -58,6 +58,9 @@ available_country_choices <- function(data) {
   data |>
     dplyr::filter(!is.na(location)) |>
     dplyr::mutate(location = as.character(location)) |>
+    dplyr::group_by(location) |>
+    dplyr::filter(sum(!is.na(mcv1)) >= 2, sum(!is.na(measles_cases)) >= 2) |>
+    dplyr::ungroup() |>
     dplyr::distinct(location) |>
     dplyr::arrange(location) |>
     dplyr::pull(location)
@@ -163,5 +166,22 @@ create_scatter_plot_data <- function(data) {
     dplyr::mutate(
       location = as.character(location),
       plot_incidence = pmax(measles_incidence_per_100k, 0.01)
+    )
+}
+
+create_map_data <- function(data, selected_year) {
+  data |>
+    dplyr::filter(year == selected_year, !is.na(iso3), nzchar(iso3)) |>
+    dplyr::arrange(location, year) |>
+    dplyr::group_by(iso3) |>
+    dplyr::slice_tail(n = 1) |>
+    dplyr::ungroup() |>
+    dplyr::transmute(
+      iso3 = as.character(iso3),
+      location = as.character(location),
+      year,
+      measles_cases,
+      measles_incidence_per_100k,
+      mcv1
     )
 }

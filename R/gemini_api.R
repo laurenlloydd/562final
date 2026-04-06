@@ -6,6 +6,16 @@ safe_mean <- function(x) {
   mean(x, na.rm = TRUE)
 }
 
+safe_cor <- function(x, y) {
+  complete <- stats::complete.cases(x, y)
+
+  if (sum(complete) < 3) {
+    return(NA_real_)
+  }
+
+  stats::cor(x[complete], y[complete])
+}
+
 format_metric <- function(value, digits = 1, suffix = "") {
   if (is.null(value) || length(value) == 0 || is.na(value)) {
     return("no reported value")
@@ -17,6 +27,20 @@ format_metric <- function(value, digits = 1, suffix = "") {
 build_country_trend_summary <- function(country_data) {
   clean_data <- country_data |>
     dplyr::arrange(year)
+
+  aligned_data <- clean_data |>
+    dplyr::filter(!is.na(mcv1), !is.na(measles_incidence_per_100k))
+
+  year_to_year_changes <- clean_data |>
+    dplyr::arrange(year) |>
+    dplyr::transmute(
+      mcv1,
+      next_mcv1 = dplyr::lead(mcv1),
+      measles_cases,
+      next_cases = dplyr::lead(measles_cases),
+      measles_incidence_per_100k,
+      next_incidence = dplyr::lead(measles_incidence_per_100k)
+    )
 
   start_row <- clean_data |>
     dplyr::filter(!is.na(measles_cases) | !is.na(mcv1)) |>
@@ -45,6 +69,35 @@ build_country_trend_summary <- function(country_data) {
     mcv1_end = end_row$mcv1 %||% NA_real_,
     average_mcv1 = safe_mean(clean_data$mcv1),
     average_cases = safe_mean(clean_data$measles_cases),
+    incidence_start = start_row$measles_incidence_per_100k %||% NA_real_,
+    incidence_end = end_row$measles_incidence_per_100k %||% NA_real_,
+    average_incidence = safe_mean(clean_data$measles_incidence_per_100k),
+    coverage_incidence_correlation = safe_cor(clean_data$mcv1, clean_data$measles_incidence_per_100k),
+    stable_high_coverage_low_incidence =
+      !is.na(safe_mean(clean_data$mcv1)) &&
+      !is.na(safe_mean(clean_data$measles_incidence_per_100k)) &&
+      safe_mean(clean_data$mcv1) >= 90 &&
+      safe_mean(clean_data$measles_incidence_per_100k) <= 5,
+    coverage_drop_followed_by_case_spike = any(
+      !is.na(year_to_year_changes$mcv1) &
+        !is.na(year_to_year_changes$next_mcv1) &
+        !is.na(year_to_year_changes$next_cases) &
+        !is.na(year_to_year_changes$measles_cases) &
+        year_to_year_changes$next_mcv1 <= year_to_year_changes$mcv1 - 2 &
+        year_to_year_changes$next_cases >
+          pmax(year_to_year_changes$measles_cases * 1.5, year_to_year_changes$measles_cases + 5),
+      na.rm = TRUE
+    ) || any(
+      !is.na(year_to_year_changes$mcv1) &
+        !is.na(year_to_year_changes$next_mcv1) &
+        !is.na(year_to_year_changes$next_incidence) &
+        !is.na(year_to_year_changes$measles_incidence_per_100k) &
+        year_to_year_changes$next_mcv1 <= year_to_year_changes$mcv1 - 2 &
+        year_to_year_changes$next_incidence >
+          pmax(year_to_year_changes$measles_incidence_per_100k * 1.5, year_to_year_changes$measles_incidence_per_100k + 0.5),
+      na.rm = TRUE
+    ),
+    aligned_years = nrow(aligned_data),
     peak_cases_year = peak_cases$year %||% NA_integer_,
     peak_cases_value = peak_cases$measles_cases %||% NA_real_,
     largest_yoy_jump_year = largest_jump$year %||% NA_integer_,
@@ -55,104 +108,83 @@ build_country_trend_summary <- function(country_data) {
 }
 
 generate_country_local_summary <- function(country_summary) {
-  coverage_direction <- dplyr::case_when(
-    is.na(country_summary$mcv1_start) || is.na(country_summary$mcv1_end) ~ "had limited vaccination coverage data",
-    country_summary$mcv1_end > country_summary$mcv1_start + 1 ~ paste0(
-      "rose from ",
-      format_metric(country_summary$mcv1_start, 1, "%"),
-      " to ",
-      format_metric(country_summary$mcv1_end, 1, "%")
-    ),
-    country_summary$mcv1_end < country_summary$mcv1_start - 1 ~ paste0(
-      "fell from ",
-      format_metric(country_summary$mcv1_start, 1, "%"),
-      " to ",
-      format_metric(country_summary$mcv1_end, 1, "%")
-    ),
-    TRUE ~ paste0(
-      "stayed fairly stable around ",
-      format_metric(country_summary$average_mcv1, 1, "%")
-    )
-  )
-
-  case_direction <- dplyr::case_when(
-    is.na(country_summary$measles_cases_start) || is.na(country_summary$measles_cases_end) ~ "Case data were incomplete across the selected period.",
-    country_summary$measles_cases_end > country_summary$measles_cases_start * 1.1 ~ paste0(
-      "Reported measles cases increased from ",
-      format_metric(country_summary$measles_cases_start, 0),
-      " to ",
-      format_metric(country_summary$measles_cases_end, 0),
-      "."
-    ),
-    country_summary$measles_cases_end < country_summary$measles_cases_start * 0.9 ~ paste0(
-      "Reported measles cases decreased from ",
-      format_metric(country_summary$measles_cases_start, 0),
-      " to ",
-      format_metric(country_summary$measles_cases_end, 0),
-      "."
-    ),
-    TRUE ~ paste0(
-      "Reported measles cases were relatively stable, moving from ",
-      format_metric(country_summary$measles_cases_start, 0),
-      " to ",
-      format_metric(country_summary$measles_cases_end, 0),
-      "."
-    )
-  )
-
-  peak_sentence <- if (!is.na(country_summary$peak_cases_year) && !is.na(country_summary$peak_cases_value)) {
-    paste0(
-      "The highest reported case count was ",
-      format_metric(country_summary$peak_cases_value, 0),
-      " in ",
+  descriptive_sentence <- dplyr::case_when(
+    !is.na(country_summary$average_mcv1) &&
+      !is.na(country_summary$average_incidence) &&
+      !is.na(country_summary$peak_cases_year) ~ paste0(
+      country_summary$country,
+      " maintains average MCV1 coverage of about ",
+      format_metric(country_summary$average_mcv1, 1, "%"),
+      ", with measles incidence averaging ",
+      format_metric(country_summary$average_incidence, 1),
+      " per 100,000 and the clearest case surge occurring around ",
       country_summary$peak_cases_year,
       "."
-    )
-  } else {
-    "No clear peak year could be identified from the available case data."
-  }
-
-  association_sentence <- dplyr::case_when(
-    is.na(country_summary$mcv1_start) || is.na(country_summary$mcv1_end) ||
-      is.na(country_summary$measles_cases_start) || is.na(country_summary$measles_cases_end) ~
-      "Because one of the two series is incomplete, any relationship between vaccination coverage and measles incidence should be interpreted cautiously.",
-    country_summary$mcv1_end < country_summary$mcv1_start && country_summary$measles_cases_end > country_summary$measles_cases_start ~
-      "Over this window, lower vaccination coverage coincided with higher case counts, which is consistent with increased outbreak risk.",
-    country_summary$mcv1_end > country_summary$mcv1_start && country_summary$measles_cases_end < country_summary$measles_cases_start ~
-      "Over this window, higher vaccination coverage coincided with lower case counts, which is consistent with stronger population protection.",
-    TRUE ~
-      "The relationship between vaccination coverage and cases was not perfectly one-directional, so the pattern should be read as descriptive rather than causal."
-  )
-
-  missing_sentence <- if (country_summary$missing_case_years > 0 || country_summary$missing_vaccine_years > 0) {
-    paste0(
-      "The selection includes ",
-      country_summary$missing_case_years,
-      " year(s) with missing case data and ",
-      country_summary$missing_vaccine_years,
-      " year(s) with missing vaccination data."
-    )
-  } else {
-    "The selected window has complete case and vaccination coverage values."
-  }
-
-  paste(
-    paste0(
-      country_summary$country,
-      " covers ",
-      country_summary$start_year,
-      " to ",
-      country_summary$end_year,
-      " across ",
-      country_summary$observations,
-      " yearly observations."
     ),
-    paste("MCV1 coverage", coverage_direction, "."),
-    case_direction,
-    peak_sentence,
-    association_sentence,
-    missing_sentence
+    !is.na(country_summary$average_mcv1) &&
+      !is.na(country_summary$average_incidence) ~ paste0(
+      country_summary$country,
+      " maintains average MCV1 coverage of about ",
+      format_metric(country_summary$average_mcv1, 1, "%"),
+      ", while measles incidence averages ",
+      format_metric(country_summary$average_incidence, 1),
+      " per 100,000."
+    ),
+    TRUE ~ paste0(
+      country_summary$country,
+      " shows enough overlap between vaccination and case reporting to support a cautious read of the outbreak pattern."
+    )
   )
+
+  relationship_sentence <- dplyr::case_when(
+    isTRUE(country_summary$stable_high_coverage_low_incidence) ~ paste0(
+      "Taken together, the time series and scatterplot suggest routine vaccination is helping suppress sustained outbreaks."
+    ),
+    !is.na(country_summary$coverage_incidence_correlation) &&
+      country_summary$coverage_incidence_correlation <= -0.35 ~ paste0(
+      "Taken together, the plots suggest higher MCV1 coverage generally aligns with lower measles incidence, which is consistent with stronger routine protection."
+    ),
+    !is.na(country_summary$coverage_incidence_correlation) &&
+      country_summary$coverage_incidence_correlation >= 0.35 ~ paste0(
+      "The relationship is less straightforward, which may indicate that outbreak risk is being shaped by factors beyond routine MCV1 coverage alone."
+    ),
+    !is.na(country_summary$mcv1_start) &&
+      !is.na(country_summary$mcv1_end) &&
+      !is.na(country_summary$incidence_start) &&
+      !is.na(country_summary$incidence_end) &&
+      country_summary$mcv1_end > country_summary$mcv1_start &&
+      country_summary$incidence_end < country_summary$incidence_start ~ paste0(
+      "Rising MCV1 coverage is paired with lower measles incidence, which suggests protection improved over time."
+    ),
+    TRUE ~ paste0(
+      "The relationship between MCV1 coverage and measles incidence is mixed, so the pattern should be interpreted cautiously."
+    )
+  )
+
+  qualifier_sentence <- dplyr::case_when(
+    isTRUE(country_summary$coverage_drop_followed_by_case_spike) ~
+      "Short drops in coverage are followed by increases in cases or incidence, which may indicate that even modest immunity gaps can raise outbreak risk.",
+    isTRUE(country_summary$stable_high_coverage_low_incidence) ~
+      "Cases remain low despite stable coverage, which is consistent with herd protection limiting transmission.",
+    !is.na(country_summary$peak_cases_year) &&
+      !is.na(country_summary$average_cases) &&
+      !is.na(country_summary$peak_cases_value) &&
+      country_summary$peak_cases_value > country_summary$average_cases * 1.5 ~ paste0(
+      "The sharpest increase appears around ",
+      country_summary$peak_cases_year,
+      ", suggesting periodic outbreaks rather than steady transmission."
+    ),
+    TRUE ~
+      "The pattern looks more like intermittent flare-ups than a steady shift in measles burden."
+  )
+
+  caution_sentence <- if (is.na(country_summary$coverage_incidence_correlation) || country_summary$aligned_years < 4) {
+    "The overlap between coverage and incidence data is limited, so this interpretation should be treated as tentative."
+  } else {
+    NULL
+  }
+
+  paste(c(descriptive_sentence, relationship_sentence, qualifier_sentence, caution_sentence), collapse = " ")
 }
 
 build_gemini_summary_payload <- function(data_subset) {
@@ -196,54 +228,38 @@ generate_local_summary <- function(payload) {
     comparison_df <- tibble::tibble(
       country = vapply(payload$country_summaries, `[[`, character(1), "country"),
       average_mcv1 = vapply(payload$country_summaries, `[[`, numeric(1), "average_mcv1"),
-      average_cases = vapply(payload$country_summaries, `[[`, numeric(1), "average_cases")
+      average_incidence = vapply(payload$country_summaries, `[[`, numeric(1), "average_incidence")
     )
 
     highest_coverage <- comparison_df |>
       dplyr::filter(!is.na(average_mcv1)) |>
       dplyr::slice_max(order_by = average_mcv1, n = 1, with_ties = FALSE)
 
-    highest_cases <- comparison_df |>
-      dplyr::filter(!is.na(average_cases)) |>
-      dplyr::slice_max(order_by = average_cases, n = 1, with_ties = FALSE)
+    lowest_incidence <- comparison_df |>
+      dplyr::filter(!is.na(average_incidence)) |>
+      dplyr::slice_min(order_by = average_incidence, n = 1, with_ties = FALSE)
 
-    comparison_parts <- c()
-
-    if (nrow(highest_coverage) > 0) {
-      comparison_parts <- c(
-        comparison_parts,
-        paste0(
+    if (nrow(highest_coverage) > 0 && nrow(lowest_incidence) > 0) {
+      if (identical(highest_coverage$country[[1]], lowest_incidence$country[[1]])) {
+        comparison_sentence <- paste0(
           highest_coverage$country[[1]],
-          " had the highest average MCV1 coverage at ",
-          format_metric(highest_coverage$average_mcv1[[1]], 1, "%"),
-          "."
+          " combines the highest average MCV1 coverage with the lowest average measles incidence in this comparison, which is consistent with stronger outbreak control."
         )
-      )
-    }
-
-    if (nrow(highest_cases) > 0) {
-      comparison_parts <- c(
-        comparison_parts,
-        paste0(
-          highest_cases$country[[1]],
-          " had the highest average reported measles cases at ",
-          format_metric(highest_cases$average_cases[[1]], 0),
-          "."
+      } else {
+        comparison_sentence <- paste0(
+          highest_coverage$country[[1]],
+          " maintains the higher average MCV1 coverage, while ",
+          lowest_incidence$country[[1]],
+          " has the lower average measles incidence, suggesting the relationship is directionally protective but not explained by coverage alone."
         )
-      )
+      }
     }
-
-    comparison_sentence <- paste(comparison_parts, collapse = " ")
   }
 
   paste(
-    paste0(
-      "Selected countries: ",
-      paste(payload$selected_countries, collapse = ", "),
-      "."
-    ),
     paste(country_sentences, collapse = " "),
-    comparison_sentence
+    comparison_sentence,
+    sep = "\n\n"
   )
 }
 
@@ -325,11 +341,18 @@ generate_summary <- function(data_subset) {
     payload$end_year,
     ". ",
     comparison_instruction,
-    " Focus on interpretation over time, not just description. ",
-    "State whether higher vaccination coverage generally aligns with lower measles burden, ",
-    "call out notable peaks or reversals, and mention if the evidence is mixed or incomplete. ",
-    "Use plain language for a general audience, avoid jargon, avoid bullet points, avoid mentioning JSON, ",
-    "and do not invent facts not present in the structured data. Keep the answer between 140 and 220 words.\n\n",
+    " Write 4 to 6 sentences in plain language for a public health audience. ",
+    "Blend a brief descriptive setup with a more elaborate interpretation. ",
+    "Use one short descriptive sentence to orient the reader, then spend most of the summary interpreting what the patterns may mean. ",
+    "Do not restate obvious details such as the number of years, missing-data counts, exact stable percentages, or what is directly visible in the charts. ",
+    "Interpret the relationship between MCV1 coverage and measles incidence. ",
+    "State whether higher vaccination coverage appears to align with lower measles burden, whether declines in coverage seem to be followed by spikes in cases, and whether low cases under stable coverage suggest effective herd immunity. ",
+    "Include concise descriptive context such as overall coverage/incidence level or whether outbreaks appear intermittent, but keep the emphasis on interpretation. ",
+    "Use cautious language when the evidence is mixed or limited, but do not overemphasize missingness. ",
+    "Use insight-driven phrasing such as 'this suggests' or 'this may indicate' when appropriate. ",
+    "Make clear conclusions about what the time-series and scatter plots imply. ",
+    "Do not begin with a 'Selected countries' label or list. ",
+    "Avoid bullet points, avoid mentioning JSON, and do not invent facts not present in the structured data.\n\n",
     "Use only the structured data below:\n",
     jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", na = "null", pretty = TRUE)
   )
@@ -368,4 +391,3 @@ generate_summary <- function(data_subset) {
 
   response_text %||% generate_local_summary(payload)
 }
-
