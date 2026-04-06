@@ -6,10 +6,11 @@
 <script src="562final_slides_files/libs/quarto-html/tippy.umd.min.js"></script>
 <link href="562final_slides_files/libs/quarto-html/tippy.css" rel="stylesheet">
 <link href="562final_slides_files/libs/quarto-html/light-border.css" rel="stylesheet">
-<link href="562final_slides_files/libs/quarto-html/quarto-syntax-highlighting-2f5df379a58b258e96c21c0638c20c03.css" rel="stylesheet" id="quarto-text-highlighting-styles"><meta charset="utf-8">
+<link href="562final_slides_files/libs/quarto-html/quarto-syntax-highlighting-dark-b53751a350365c71b6c909e95f209ed1.css" rel="stylesheet" id="quarto-text-highlighting-styles"><meta charset="utf-8">
   <meta name="generator" content="quarto-1.6.42">
 
-  <title>GLHLTH 562 Project: Global Measles Cases v.s. Measles Vaccine Coverage</title>
+  <meta name="author" content="Lindsey Cobb and Lauren Lloyd">
+  <title>Global Measles Cases v.s. Measles Vaccine Coverage</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
@@ -28,7 +29,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="562final_slides_files/libs/revealjs/dist/theme/quarto-2f366650f320edcfcf53d73c80250a32.css">
+  <link rel="stylesheet" href="562final_slides_files/libs/revealjs/dist/theme/quarto-e9506f4cf0740638825fabafd1e71958.css">
   <link href="562final_slides_files/libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="562final_slides_files/libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="562final_slides_files/libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -121,25 +122,30 @@
     }
   </style>
 </head>
-<body class="quarto-light">
+<body class="quarto-dark">
   <div class="reveal">
     <div class="slides">
 
 <section id="title-slide" class="quarto-title-block center">
-  <h1 class="title">GLHLTH 562 Project: Global Measles Cases v.s. Measles Vaccine Coverage</h1>
+  <h1 class="title">Global Measles Cases v.s. Measles Vaccine Coverage</h1>
 
 <div class="quarto-title-authors">
+<div class="quarto-title-author">
+<div class="quarto-title-author-name">
+Lindsey Cobb and Lauren Lloyd 
+</div>
+</div>
 </div>
 
 </section>
 <section id="topic-overview" class="title-slide slide level1 center">
 <h1>Topic Overview</h1>
 <ul>
-<li><p>Especially since the COVID-19 pandemic, vaccine mistrust has increased significantly throughout the world</p></li>
-<li><p>Rising vaccine hesitancy has been recognized as a global problem by WHO</p></li>
+<li><p>Since the COVID-19 pandemic, <strong>vaccine mistrust has increased significantly</strong> throughout the world</p></li>
+<li><p>Rising vaccine hesitancy has been recognized as a <strong>global problem</strong> by the World Health Organization</p></li>
 <li><p>Potential impacts of reduced vaccines are extensive</p>
 <ul>
-<li>For example, resurgence of measles in the U.S.</li>
+<li><em>For example, the resurgence of measles in the U.S.</em></li>
 </ul></li>
 <li><p>Outbreaks are not constrained to geographic borders</p></li>
 </ul>
@@ -147,21 +153,19 @@
 
 <section id="app-overview" class="title-slide slide level1 center">
 <h1>App Overview</h1>
-<p><strong>Goal:</strong> understand the potential relationship between <strong>vaccine coverage</strong> and <strong>global measles outbreaks</strong></p>
-<ul>
-<li><p>Shiny App</p>
-<ul>
-<li><p>Incorporates API integration and a GenAI model</p></li>
-<li><p>Analyze trends in global measles cases and measles vaccination coverage (MCV1, MCV2)</p></li>
-</ul></li>
-</ul>
+<p><strong>Goal:</strong> understand the potential relationship between <em>vaccine coverage</em> and <em>global measles outbreaks</em></p>
+<p><strong>Users:</strong> students, community members, policy makers, and public health practitioners</p>
 </section>
 
 <section id="app-overview-1" class="title-slide slide level1 center">
 <h1>App Overview</h1>
-<p><strong>Goal:</strong> understand the potential relationship between <strong>vaccine coverage</strong> and <strong>global measles outbreaks</strong></p>
 <ul>
-<li><p>Data Sources</p>
+<li><p><em>Shiny App</em></p>
+<ul>
+<li><p>Incorporates API integration and a GenAI model</p></li>
+<li><p>Analyze trends in global measles cases and measles vaccination coverage <strong>(MCV1, MCV2)</strong></p></li>
+</ul></li>
+<li><p><em>Data Sources</em></p>
 <ul>
 <li><p>Our World in Data</p></li>
 <li><p>WHO Global Health Observatory API</p></li>
@@ -170,9 +174,37 @@
 </ul>
 </section>
 
+<section id="design-decisions" class="title-slide slide level1 center">
+<h1>Design Decisions:</h1>
+<ul>
+<li>Time Series Visualizations</li>
+<li>Scatterplot</li>
+<li>Summary Table</li>
+<li>Interactive Filtering</li>
+</ul>
+<p><em>Trying to balance simplicity and usability with depth</em></p>
+</section>
+
 <section id="project-site" class="title-slide slide level1 center">
 <h1>Project Site:</h1>
 <p><strong>https://laurenlloyd.shinyapps.io/562final/</strong></p>
+</section>
+
+<section id="improvements" class="title-slide slide level1 center">
+<h1>Improvements:</h1>
+<ul>
+<li><em>Include other demographic indicators</em>
+<ul>
+<li>Rural vs Urban</li>
+<li>Age Group</li>
+<li>Income Level</li>
+</ul></li>
+<li><em>Include geographic visualizations</em>
+<ul>
+<li>Compare regional differences or cluster distributions</li>
+</ul></li>
+<li><em>Include vaccine hesitancy data</em></li>
+</ul>
 
 </section>
     </div>

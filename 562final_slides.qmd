@@ -1,36 +1,40 @@
 ---
-title: "GLHLTH 562 Project: Global Measles Cases v.s. Measles Vaccine Coverage"
-format: revealjs
-editor: visual
+title: "Global Measles Cases v.s. Measles Vaccine Coverage"
+author: "Lindsey Cobb and Lauren Lloyd"
+format:
+  revealjs: 
+    theme: dracula
 ---
 
 # Topic Overview
 
--   Especially since the COVID-19 pandemic, vaccine mistrust has increased significantly throughout the world
+-   Since the COVID-19 pandemic, **vaccine mistrust has increased significantly** throughout the world
 
--   Rising vaccine hesitancy has been recognized as a global problem by WHO
+-   Rising vaccine hesitancy has been recognized as a **global problem** by the World Health Organization
 
 -   Potential impacts of reduced vaccines are extensive
 
-    -   For example, resurgence of measles in the U.S.
+    -   *For example, the resurgence of measles in the U.S.*
 
 -   Outbreaks are not constrained to geographic borders
 
 # App Overview
 
-**Goal:** understand the potential relationship between **vaccine coverage** and **global measles outbreaks**
+**Goal:** understand the potential relationship between *vaccine coverage* and *global measles outbreaks* 
 
--   Shiny App
 
-    -   Incorporates API integration and a GenAI model
-
-    -   Analyze trends in global measles cases and measles vaccination coverage (MCV1, MCV2)
+**Users:** students, community members, policy makers, and public health practitioners
+    
 
 # App Overview
 
-**Goal:** understand the potential relationship between **vaccine coverage** and **global measles outbreaks**
+-   *Shiny App*
 
--   Data Sources
+    -   Incorporates API integration and a GenAI model
+
+    -   Analyze trends in global measles cases and measles vaccination coverage **(MCV1, MCV2)**
+
+-   *Data Sources*
 
     -   Our World in Data
 
@@ -38,6 +42,28 @@ editor: visual
 
     -   World Bank API
 
+# Design Decisions: 
+- Time Series Visualizations
+- Scatterplot 
+- Summary Table 
+- Interactive Filtering
+
+*Trying to balance simplicity and usability with depth*
+
 # Project Site:
 
 **https://laurenlloyd.shinyapps.io/562final/**
+
+
+# Improvements: 
+- *Include other demographic indicators*
+  - Rural vs Urban 
+  - Age Group
+  - Income Level
+  
+- *Include geographic visualizations*
+  - Compare regional differences or cluster distributions
+  
+- *Include vaccine hesitancy data*
+
+
