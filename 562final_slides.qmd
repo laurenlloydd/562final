@@ -16,11 +16,11 @@ format:
 
     -   *For example, the resurgence of measles in the U.S.*
 
--   Outbreaks are not constrained to geographic borders
+-   Outbreaks are not constrained to geographic borders 
 
 # App Overview
 
-**Goal:** understand the potential relationship between *vaccine coverage* and *global measles outbreaks* 
+**Goal:** understand the potential relationship between *measles vaccine coverage* and *global measles outbreaks* 
 
 
 **Users:** students, community members, policy makers, and public health practitioners
@@ -43,10 +43,11 @@ format:
     -   World Bank API
 
 # Design Decisions: 
+- Interactive Map 
 - Time Series Visualizations
 - Scatterplot 
 - Summary Table 
-- Interactive Filtering
+- User-controlled Filtering 
 
 *Trying to balance simplicity and usability with depth*
 
@@ -61,7 +62,7 @@ format:
   - Age Group
   - Income Level
   
-- *Include geographic visualizations*
+- *Include more detailed geographic visualizations*
   - Compare regional differences or cluster distributions
   
 - *Include vaccine hesitancy data*
