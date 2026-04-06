@@ -217,3 +217,4 @@ fetch_all_runtime_data <- function(start_year = 2000, end_year = 2025) {
     population = population
   )
 }
+

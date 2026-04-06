@@ -158,3 +158,4 @@ create_scatter_plot_data <- function(data) {
     dplyr::filter(!is.na(mcv1), !is.na(measles_incidence_per_100k)) |>
     dplyr::mutate(plot_incidence = pmax(measles_incidence_per_100k, 0.01))
 }
+

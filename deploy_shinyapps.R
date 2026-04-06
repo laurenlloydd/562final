@@ -38,3 +38,4 @@ if (!is.null(deployment$url) && nzchar(deployment$url)) {
 } else {
   cat("Public URL:", public_url, "\n")
 }
+

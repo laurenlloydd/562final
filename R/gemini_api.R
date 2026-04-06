@@ -368,3 +368,4 @@ generate_summary <- function(data_subset) {
 
   response_text %||% generate_local_summary(payload)
 }
+
