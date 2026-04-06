@@ -1,5 +1,5 @@
 standardize_location_from_iso3 <- function(iso3) {
-  suppressWarnings(countrycode::countrycode(iso3, "iso3c", "country.name"))
+  suppressWarnings(countrycode::countrycode(as.character(iso3), "iso3c", "country.name"))
 }
 
 last_non_missing <- function(x) {
@@ -29,7 +29,8 @@ build_analysis_dataset <- function(
     dplyr::full_join(who_joined, by = c("iso3", "year")) |>
     dplyr::full_join(population, by = c("iso3", "year"), suffix = c("", "_wb")) |>
     dplyr::mutate(
-      location = dplyr::coalesce(location, location_wb, standardize_location_from_iso3(iso3)),
+      iso3 = as.character(iso3),
+      location = as.character(dplyr::coalesce(location, location_wb, standardize_location_from_iso3(iso3))),
       measles_cases = dplyr::coalesce(measles_cases_who, measles_cases_owid),
       mcv1 = dplyr::coalesce(mcv1_who, mcv1_owid),
       measles_incidence_per_100k = dplyr::if_else(
@@ -56,15 +57,18 @@ build_analysis_dataset <- function(
 available_country_choices <- function(data) {
   data |>
     dplyr::filter(!is.na(location)) |>
+    dplyr::mutate(location = as.character(location)) |>
     dplyr::distinct(location) |>
     dplyr::arrange(location) |>
     dplyr::pull(location)
 }
 
 filter_country_data <- function(data, countries, year_range) {
+  countries <- as.character(countries)
   countries <- countries[!is.na(countries) & nzchar(countries)]
 
   data |>
+    dplyr::mutate(location = as.character(location)) |>
     dplyr::filter(
       location %in% countries,
       year >= year_range[1],
@@ -114,34 +118,39 @@ summarise_country_metrics <- function(data) {
 create_trend_plot_data <- function(data) {
   cases_long <- data |>
     dplyr::transmute(
-      location,
+      location = as.character(location),
       year,
-      metric = "Reported measles cases",
+      metric = as.character("Reported measles cases"),
       value = measles_cases
     )
 
   vaccine_long <- data |>
-    dplyr::select(location, year, mcv1, mcv2_who) |>
+    dplyr::transmute(
+      location = as.character(location),
+      year,
+      mcv1,
+      mcv2_who
+    ) |>
     tidyr::pivot_longer(
       cols = c(mcv1, mcv2_who),
       names_to = "series",
       values_to = "value"
     ) |>
     dplyr::mutate(
-      metric = dplyr::case_when(
+      metric = as.character(dplyr::case_when(
         series == "mcv1" ~ "Vaccination coverage (%)",
         series == "mcv2_who" ~ "Vaccination coverage (%)",
         TRUE ~ "Vaccination coverage (%)"
-      ),
-      series = dplyr::case_when(
+      )),
+      series = as.character(dplyr::case_when(
         series == "mcv1" ~ "MCV1",
         series == "mcv2_who" ~ "MCV2",
         TRUE ~ series
-      )
+      ))
     )
 
   dplyr::bind_rows(
-    cases_long |> dplyr::mutate(series = "Cases"),
+    cases_long |> dplyr::mutate(series = as.character("Cases")),
     vaccine_long
   ) |>
     dplyr::filter(!is.na(value))
@@ -151,6 +160,8 @@ create_scatter_plot_data <- function(data) {
   data |>
     dplyr::filter(!is.na(mcv1), !is.na(measles_incidence_per_100k)) |>
     dplyr::arrange(location, year) |>
-    dplyr::mutate(plot_incidence = pmax(measles_incidence_per_100k, 0.01))
+    dplyr::mutate(
+      location = as.character(location),
+      plot_incidence = pmax(measles_incidence_per_100k, 0.01)
+    )
 }
-

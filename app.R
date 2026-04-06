@@ -1,8 +1,32 @@
+required <- c(
+  "shiny",
+  "dplyr",
+  "ggplot2",
+  "plotly",
+  "scales",
+  "countrycode",
+  "httr2",
+  "jsonlite",
+  "readr",
+  "tibble",
+  "tidyr"
+)
+missing <- required[!sapply(required, requireNamespace, quietly = TRUE)]
+if (length(missing) > 0) {
+  warning(paste("Missing packages:", paste(missing, collapse = ", ")))
+}
+
 library(shiny)
 library(dplyr)
 library(ggplot2)
 library(plotly)
 library(scales)
+library(countrycode)
+library(httr2)
+library(jsonlite)
+library(readr)
+library(tibble)
+library(tidyr)
 
 source(file.path("R", "data_fetch.R"))
 source(file.path("R", "data_process.R"))
@@ -73,7 +97,7 @@ server <- function(input, output, session) {
   )
 
   initialize_inputs_from_dataset <- function(dataset) {
-    choices <- available_country_choices(dataset)
+    choices <- as.character(available_country_choices(dataset))
 
     updateSelectInput(session, "country", choices = choices, selected = "United States")
     updateSelectInput(
@@ -150,11 +174,11 @@ server <- function(input, output, session) {
   selected_data <- reactive({
     req(dataset_state$data, input$country, input$year_range)
 
-    countries <- c(input$country, input$compare_country)
+    countries <- as.character(c(input$country, input$compare_country))
     subset <- filter_country_data(dataset_state$data, countries, input$year_range)
     validation_message <- validate_country_subset(subset)
 
-    validate(need(is.null(validation_message), validation_message))
+    shiny::validate(shiny::need(is.null(validation_message), validation_message))
     subset
   })
 
@@ -228,8 +252,8 @@ server <- function(input, output, session) {
   output$scatter_plot <- renderPlotly({
     plot_data <- create_scatter_plot_data(selected_data())
 
-    validate(
-      need(nrow(plot_data) > 0, "Not enough non-missing rows for the vaccination/incidence scatterplot.")
+    shiny::validate(
+      shiny::need(nrow(plot_data) > 0, "Not enough non-missing rows for the vaccination/incidence scatterplot.")
     )
 
     plot <- ggplot(

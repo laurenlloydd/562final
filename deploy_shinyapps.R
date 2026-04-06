@@ -8,9 +8,20 @@ account_secret <- "eZCSwdsWBupQEt3ajpWarQiavvPZ/+iK3vG6DDL8"
 
 # By default the app name matches the current folder name.
 # Change app_name if you want a different shinyapps.io URL slug.
-app_name <- basename(normalizePath(getwd()))
-local_library <- file.path(getwd(), ".Rlibs")
-app_files <- c("app.R", "R")
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- "--file="
+script_args <- args[startsWith(args, file_arg)]
+script_path <- if (length(script_args) > 0) {
+  normalizePath(sub(file_arg, "", script_args[[1]]), winslash = "/", mustWork = TRUE)
+} else if (!is.null(sys.frames()[[1]]$ofile)) {
+  normalizePath(sys.frames()[[1]]$ofile, winslash = "/", mustWork = TRUE)
+} else {
+  normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+}
+project_dir <- if (file.info(script_path)$isdir) script_path else dirname(script_path)
+app_name <- basename(project_dir)
+local_library <- file.path(project_dir, ".Rlibs")
+app_files <- c("app.R", "R", "renv.lock")
 
 .libPaths(c(local_library, .libPaths()))
 
@@ -34,7 +45,7 @@ rsconnect::setAccountInfo(
 )
 
 deployment <- rsconnect::deployApp(
-  appDir = getwd(),
+  appDir = project_dir,
   appFiles = app_files,
   appName = app_name,
   launch.browser = FALSE
@@ -72,4 +83,3 @@ if (is.null(public_url) || !nzchar(public_url)) {
 cat("\nDeployment complete.\n")
 
 cat("Public URL:", public_url, "\n")
-
