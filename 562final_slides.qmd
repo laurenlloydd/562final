@@ -1,0 +1,43 @@
+---
+title: "GLHLTH 562 Project: Global Measles Cases v.s. Measles Vaccine Coverage"
+format: revealjs
+editor: visual
+---
+
+# Topic Overview
+
+-   Especially since the COVID-19 pandemic, vaccine mistrust has increased significantly throughout the world
+
+-   Rising vaccine hesitancy has been recognized as a global problem by WHO
+
+-   Potential impacts of reduced vaccines are extensive
+
+    -   For example, resurgence of measles in the U.S.
+
+-   Outbreaks are not constrained to geographic borders
+
+# App Overview
+
+**Goal:** understand the potential relationship between **vaccine coverage** and **global measles outbreaks**
+
+-   Shiny App
+
+    -   Incorporates API integration and a GenAI model
+
+    -   Analyze trends in global measles cases and measles vaccination coverage (MCV1, MCV2)
+
+# App Overview
+
+**Goal:** understand the potential relationship between **vaccine coverage** and **global measles outbreaks**
+
+-   Data Sources
+
+    -   Our World in Data
+
+    -   WHO Global Health Observatory API
+
+    -   World Bank API
+
+# Project Site:
+
+**https://laurenlloyd.shinyapps.io/562final/**
