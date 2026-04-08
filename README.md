@@ -1,12 +1,15 @@
 # Global Measles Incidence and Vaccination Dashboard
 
-This repository contains an R Shiny data product that ingests live public health data at runtime, builds a country-year analysis dataset, and serves an interactive dashboard for exploring measles burden and vaccination coverage. The app can also generate a short narrative summary for the selected country or country comparison using the Gemini API, with a deterministic local fallback when no API key is available.
+This repository contains an R Shiny data product that ingests live public health data at runtime, builds a country-year analysis dataset, and serves a two-stage web experience: a public-facing landing page followed by an interactive dashboard for exploring measles burden and vaccination coverage. The app can also generate a short narrative summary for the selected country or country comparison using the Gemini API, with a deterministic local fallback when no API key is available.
 
 This README is the technical handoff document for the pipeline. It is written for the next person who needs to run, maintain, or redeploy the project.
 
 ## What This Project Produces
 
-The main output is a Shiny dashboard with four interactive views:
+The main output is a Shiny app with:
+
+- A landing page that explains what measles is, why vaccination coverage matters, why the interface is useful, and how to enter the dashboard
+- A dashboard with four interactive views
 
 - A world choropleth map for either measles incidence per 100,000 or MCV1 coverage
 - A time-series view of reported measles cases, MCV1 coverage, and MCV2 coverage
@@ -17,7 +20,7 @@ The app also produces:
 
 - A narrative summary for the selected country or country pair
 - A local HTML shell at `_site/index.html` when `run-all.R` is used
-- An optional shinyapps.io deployment via `deploy_shinyapps.R`
+- An optional shinyapps.io deployment via `deploy_shinyapps.R`, where the root app URL opens on the landing page first
 
 ## Repository Structure
 
@@ -27,14 +30,12 @@ project/
 ├── run-all.R
 ├── deploy_shinyapps.R
 ├── README.md
-├── .Renviron.example
 ├── renv.lock
 ├── R/
 │   ├── data_fetch.R
 │   ├── data_process.R
 │   └── gemini_api.R
-├── _site/
-└── rsconnect/
+└── _site/
 ```
 
 ## Pipeline Summary
@@ -44,7 +45,7 @@ The runtime pipeline is:
 1. `R/data_fetch.R` pulls live data from OWID, WHO, and the World Bank.
 2. `R/data_process.R` standardizes, joins, and derives analysis fields.
 3. `R/gemini_api.R` builds the summary payload and either calls Gemini or falls back to a local summary generator.
-4. `app.R` loads the dataset into Shiny, exposes filtering controls, and renders the dashboard outputs.
+4. `app.R` loads the dataset into Shiny, renders a landing page at first load, exposes filtering controls in the dashboard view, and renders the dashboard outputs.
 5. `run-all.R` optionally preloads the dataset before app startup and creates a local shell page in `_site/`.
 
 ## 1. Where The Data Comes From
@@ -258,10 +259,23 @@ If Gemini is available, the app sends that structured payload to `gemini-2.5-fla
 
 ### Dashboard
 
-`app.R` serves a Shiny dashboard titled `Global Measles Incidence and Vaccination Dashboard`.
+`app.R` serves a Shiny app titled `Global Measles Incidence and Vaccination Dashboard`.
+
+### Landing Page
+
+The app now opens on an `Overview` tab that acts as the landing page for the shinyapps.io URL and local runs. That page includes:
+
+- A short explanation of what measles is
+- A short explanation of vaccination coverage and why it matters
+- Context for why comparing measles burden against vaccine coverage is useful
+- A brief summary of the available dashboard tools
+- A direct `Open the interactive dashboard` button that switches the user into the existing app interface
+
+The navigation tabs remain visible, so users can also click `Dashboard` directly.
 
 Tabs rendered by the app:
 
+- `Overview`
 - `World Map`
 - `Time Series`
 - `Scatterplot`
@@ -281,9 +295,13 @@ The summary panel underneath the tabs displays:
 
 When `run-all.R` is used, the project creates `_site/index.html`, which embeds the running app in an iframe and links to the direct local Shiny URL. This is a convenience output for demoing the app locally.
 
+### Dashboard Entry
+
+The original analytic interface is preserved under the `Dashboard` tab. No analytic controls or outputs were removed; the landing page is an additional first-load layer in front of the existing dashboard.
+
 ### Deployment Output
 
-`deploy_shinyapps.R` deploys the app to shinyapps.io and prints the public URL after deployment.
+`deploy_shinyapps.R` deploys the app to shinyapps.io and prints the public URL after deployment. When the deployed URL is opened, users land on the `Overview` tab first and can enter the analytic interface through the button on that page or by clicking the `Dashboard` tab.
 
 ## 5. How Someone Else Could Run It
 
@@ -301,7 +319,6 @@ When `run-all.R` is used, the project creates `_site/index.html`, which embeds t
 - `R/data_fetch.R`: all runtime data ingestion
 - `R/data_process.R`: joins and derived fields
 - `R/gemini_api.R`: narrative summary logic
-- `.Renviron.example`: example environment variable file
 - `renv.lock`: reproducible package snapshot
 
 ### Dependency Setup
@@ -358,6 +375,8 @@ Rscript run-all.R
 5. Create `_site/index.html`.
 6. Launch the app on a random local port.
 
+When the app opens in a browser, the first visible page is the `Overview` landing page. Users can then move into the existing interactive dashboard from that page.
+
 ### Refreshing Data
 
 The dashboard fetches live data at startup. Users can also click `Refresh Live Data` in the sidebar to rerun the ingestion and processing pipeline during the session.
@@ -377,6 +396,8 @@ The deployment script:
 3. Installs `rsconnect` locally if it is missing.
 4. Deploys `app.R`, `R/`, and `renv.lock`.
 5. Prints the public shinyapps.io URL.
+
+Note on `rsconnect/`: this repository does not currently store a committed `rsconnect/` metadata folder. The landing page behavior is implemented directly in `app.R`, so the shinyapps.io URL itself opens on the landing page after deployment without requiring committed deployment metadata.
 
 Maintenance note: the current deployment script stores shinyapps.io credentials directly in `deploy_shinyapps.R`. That works for deployment, but it is not a good long-term secret-management pattern. Move those credentials into environment variables or Posit-managed account configuration before sharing or reusing this code outside the course setting.
 

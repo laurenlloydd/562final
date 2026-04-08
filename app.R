@@ -47,55 +47,538 @@ world_geometry <- rnaturalearth::ne_countries(scale = "medium", returnclass = "s
     geometry
   )
 
-ui <- fluidPage(
-  titlePanel("Global Measles Incidence and Vaccination Dashboard"),
-  sidebarLayout(
-    sidebarPanel(
-      width = 3,
-      actionButton("refresh_data", "Refresh Live Data"),
-      br(),
-      br(),
-      selectInput("country", "Country", choices = character(0)),
-      selectInput(
-        "compare_country",
-        "Comparison Country (Optional)",
-        choices = c("None" = "")
-      ),
-      uiOutput("year_slider_ui"),
-      uiOutput("map_year_ui"),
-      selectInput(
-        "map_metric",
-        "Map Metric",
-        choices = c(
-          "Measles incidence (per 100k)" = "measles_incidence_per_100k",
-          "MCV1 coverage (%)" = "mcv1"
-        ),
-        selected = "measles_incidence_per_100k"
-      ),
-      tags$hr(),
-      strong("Data Status"),
-      textOutput("data_status")
-    ),
-    mainPanel(
-      width = 9,
-      tabsetPanel(
-        tabPanel("World Map", leafletOutput("world_map", height = "620px")),
-        tabPanel("Time Series", plotlyOutput("trend_plot", height = "620px")),
-        tabPanel("Scatterplot", plotlyOutput("scatter_plot", height = "520px")),
-        tabPanel("Summary Table", tableOutput("summary_table"))
-      ),
+landing_page_ui <- tagList(
+  div(
+    class = "landing-shell",
+    div(
+      class = "landing-hero",
       fluidRow(
         column(
-          width = 12,
-          h3("Summary"),
+          width = 8,
+          tags$span(class = "hero-kicker", "WHO measles overview"),
+          h1("Global Measles Incidence and Vaccination Dashboard"),
           tags$p(
-            style = "font-size: 16px; line-height: 1.5; color: #444;",
-            HTML("<strong>Vaccine terms:</strong> MCV1 is the first routine measles vaccine dose. MCV2 is the second dose, which strengthens protection and helps close immunity gaps.")
+            class = "hero-lead",
+            "Measles is a highly contagious airborne viral disease that spreads easily when an infected person breathes, coughs, or sneezes. WHO notes that it can cause severe disease, complications, and death, especially in children, and that complications are most common in children under 5 years, adults over 30 years, and people who are malnourished or immunocompromised."
           ),
-          uiOutput("summary_text")
+          tags$p(
+            class = "hero-lead secondary",
+            "The vaccine is safe and cost-effective, and WHO reports that measles vaccination averted nearly 59 million deaths between 2000 and 2024. But global protection is still below the level needed to stop outbreaks: in 2024, first-dose coverage was 84%, second-dose coverage was 76%, and WHO guidance indicates that at least 95% coverage with two doses is needed to prevent transmission and protect communities."
+          ),
+          div(
+            class = "hero-actions",
+            actionButton("enter_dashboard", "Open the interactive dashboard", class = "primary-cta"),
+            tags$span(class = "hero-note", "Or use the Dashboard tab above.")
+          ),
+          tags$p(
+            class = "hero-citation",
+            "Source: WHO Measles Fact Sheet (who.int)"
+          )
+        ),
+        column(
+          width = 4,
+          div(
+            class = "hero-side-panel",
+            div(
+              class = "mini-chart-card",
+              h3("Global measles vaccine coverage"),
+              tags$p(
+                class = "mini-chart-caption",
+                "WHO reported 84% first-dose coverage and 76% second-dose coverage in 2024."
+              ),
+              div(
+                class = "coverage-bars",
+                div(
+                  class = "coverage-row",
+                  tags$div(class = "coverage-label-wrap",
+                    tags$span(class = "coverage-label", "MCV1"),
+                    tags$span(class = "coverage-value", "84%")
+                  ),
+                  div(class = "coverage-track", div(class = "coverage-fill fill-mcv1", style = "width: 84%;"))
+                ),
+                div(
+                  class = "coverage-row",
+                  tags$div(class = "coverage-label-wrap",
+                    tags$span(class = "coverage-label", "MCV2"),
+                    tags$span(class = "coverage-value", "76%")
+                  ),
+                  div(class = "coverage-track", div(class = "coverage-fill fill-mcv2", style = "width: 76%;"))
+                ),
+                div(
+                  class = "coverage-row threshold-row",
+                  tags$div(class = "coverage-label-wrap",
+                    tags$span(class = "coverage-label", "Threshold"),
+                    tags$span(class = "coverage-value", "95%")
+                  ),
+                  div(class = "coverage-track threshold-track", div(class = "coverage-fill fill-threshold", style = "width: 95%;"))
+                )
+              )
+            ),
+            div(
+              class = "stat-grid",
+              div(
+                class = "stat-card",
+                tags$span(class = "stat-value", "95,000"),
+                tags$span(class = "stat-label", "Estimated measles deaths globally in 2024")
+              ),
+              div(
+                class = "stat-card",
+                tags$span(class = "stat-value", "59M"),
+                tags$span(class = "stat-label", "Deaths averted by measles vaccination, 2000-2024")
+              ),
+              div(
+                class = "stat-card",
+                tags$span(class = "stat-value", "97%"),
+                tags$span(class = "stat-label", "Protection WHO reports after two doses")
+              )
+            )
+          )
+        )
+      )
+    ),
+    div(
+      class = "fast-facts-strip",
+      div(
+        class = "fact-column",
+        tags$span(class = "fact-tag", "What measles is"),
+        tags$p(
+          "WHO describes measles as a serious airborne viral disease that infects the respiratory tract and then spreads throughout the body. Symptoms include high fever, cough, runny nose, red watery eyes, and a rash."
+        ),
+        tags$p(
+          "It spreads easily when an infected person breathes, coughs, or sneezes."
+        )
+      ),
+      div(
+        class = "fact-column",
+        tags$span(class = "fact-tag", "MCV1 and MCV2"),
+        tags$p(
+          "WHO recommends two doses of measles-containing vaccine. The fact sheet notes that two doses are needed to ensure immunity because not all children develop immunity from the first dose."
+        ),
+        tags$p(
+          "WHO also reports that two doses provide 97% protection from infection and its serious consequences for most people."
+        )
+      ),
+      div(
+        class = "fact-column",
+        tags$span(class = "fact-tag", "Why this app matters"),
+        tags$p(
+          "Coverage gaps leave populations susceptible, and the dashboard helps users see where those gaps overlap with higher reported incidence, case burden, and shifting trends over time."
+        ),
+        tags$p(
+          "That makes the app useful for comparison, risk communication, and country-level surveillance review."
+        )
+      )
+    ),
+    div(
+      class = "callout-box",
+      tags$span(class = "callout-tag", "Why incidence and coverage together?"),
+      h3("Coverage tells you where protection is thin. Incidence shows where outbreaks are already breaking through."),
+      tags$p(
+        "WHO states that at least 95% coverage with two doses is needed to prevent outbreaks and protect communities. When coverage falls below that threshold, immunity gaps can open. Reading measles incidence side by side with MCV1 and MCV2 coverage makes it easier to spot where vulnerability and burden may be moving together."
+      )
+    ),
+    div(
+      class = "tools-section",
+      div(
+        class = "section-heading",
+        tags$span(class = "section-kicker", "Explore the interface"),
+        h2("Tools available in the app")
+      ),
+      div(
+        class = "tool-grid",
+        div(
+          class = "tool-card",
+          tags$span(class = "tool-tag", "Mapping"),
+          h3("World Map"),
+          tags$p(
+            "Compare country-level measles incidence or MCV1 coverage for a selected year and see how selected countries stand out against the global background."
+          )
+        ),
+        div(
+          class = "tool-card",
+          tags$span(class = "tool-tag", "Trend view"),
+          h3("Time Series"),
+          tags$p(
+            "Track reported measles cases, MCV1 coverage, and MCV2 coverage over time for one country or an optional comparison country."
+          )
+        ),
+        div(
+          class = "tool-card",
+          tags$span(class = "tool-tag", "Relationship"),
+          h3("Scatterplot"),
+          tags$p(
+            "Inspect how vaccination coverage and measles incidence move together across years, with point size reflecting reported case counts."
+          )
+        ),
+        div(
+          class = "tool-card",
+          tags$span(class = "tool-tag", "Context"),
+          h3("Summary Table and Narrative"),
+          tags$p(
+            "Review the latest country metrics, refresh live data, and read a short narrative summary of the selected country or comparison."
+          )
+        )
+      )
+    ),
+    div(
+      class = "data-sources-section",
+      tags$details(
+        class = "data-sources-details",
+        tags$summary("Data sources used in this app"),
+        tags$div(
+          class = "data-source-item",
+          strong("Our World in Data"),
+          tags$p(
+            "Reported cases, MCV1 coverage, child measles prevalence, vaccine attitudes, and region labels."
+          ),
+          tags$ul(
+            tags$li("reported-cases-of-measles.csv"),
+            tags$li("share-of-children-vaccinated-against-measles.csv"),
+            tags$li("API indicator endpoints used for child measles prevalence, vaccine attitudes, and region labels")
+          )
+        ),
+        tags$div(
+          class = "data-source-item",
+          strong("WHO Global Health Observatory"),
+          tags$p(
+            "MCV1 (WHS8_110), MCV2, and measles cases (WHS3_62) via ghoapi.azureedge.net."
+          )
+        ),
+        tags$div(
+          class = "data-source-item",
+          strong("World Bank"),
+          tags$p(
+            "Annual population (SP.POP.TOTL), used to calculate measles incidence per 100,000."
+          )
         )
       )
     )
+  )
+)
+
+dashboard_ui <- sidebarLayout(
+  sidebarPanel(
+    width = 3,
+    actionButton("refresh_data", "Refresh Live Data"),
+    br(),
+    br(),
+    selectInput("country", "Country", choices = character(0)),
+    selectInput(
+      "compare_country",
+      "Comparison Country (Optional)",
+      choices = c("None" = "")
+    ),
+    uiOutput("year_slider_ui"),
+    uiOutput("map_year_ui"),
+    selectInput(
+      "map_metric",
+      "Map Metric",
+      choices = c(
+        "Measles incidence (per 100k)" = "measles_incidence_per_100k",
+        "MCV1 coverage (%)" = "mcv1"
+      ),
+      selected = "measles_incidence_per_100k"
+    ),
+    tags$hr(),
+    strong("Data Status"),
+    textOutput("data_status")
+  ),
+  mainPanel(
+    width = 9,
+    tabsetPanel(
+      tabPanel("World Map", leafletOutput("world_map", height = "620px")),
+      tabPanel("Time Series", plotlyOutput("trend_plot", height = "620px")),
+      tabPanel("Scatterplot", plotlyOutput("scatter_plot", height = "520px")),
+      tabPanel("Summary Table", tableOutput("summary_table"))
+    ),
+    fluidRow(
+      column(
+        width = 12,
+        h3("Summary"),
+        tags$p(
+          style = "font-size: 16px; line-height: 1.5; color: #444;",
+          HTML("<strong>Vaccine terms:</strong> MCV1 is the first routine measles vaccine dose. MCV2 is the second dose, which strengthens protection and helps close immunity gaps.")
+        ),
+        uiOutput("summary_text")
+      ),
+    )
+  )
+)
+
+ui <- fluidPage(
+  tags$head(
+    tags$style(HTML("
+      body {
+        background: #fff9f4;
+        color: #2b211d;
+      }
+      .nav-tabs {
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .landing-shell {
+        padding: 20px 8px 34px;
+      }
+      .landing-hero {
+        background: #FDF3EB;
+        border: 1px solid #F0D5BC;
+        border-radius: 28px;
+        padding: 34px 32px;
+        margin-bottom: 22px;
+        box-shadow: 0 20px 46px rgba(153, 60, 29, 0.08);
+      }
+      .hero-kicker {
+        display: inline-block;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-size: 12px;
+        font-weight: 700;
+        color: #993C1D;
+      }
+      .landing-hero h1 {
+        margin-top: 0;
+        margin-bottom: 16px;
+        font-size: 42px;
+        line-height: 1.04;
+      }
+      .hero-lead {
+        font-size: 18px;
+        line-height: 1.75;
+        max-width: 780px;
+        margin-bottom: 16px;
+      }
+      .hero-lead.secondary {
+        color: #5c463c;
+      }
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+        margin-top: 24px;
+      }
+      .primary-cta,
+      .primary-cta:hover,
+      .primary-cta:focus {
+        background: #993C1D !important;
+        border-color: #993C1D !important;
+        color: #ffffff !important;
+        font-weight: 700;
+        padding: 11px 18px;
+        border-radius: 999px;
+        box-shadow: 0 10px 22px rgba(153, 60, 29, 0.18);
+      }
+      .hero-note {
+        color: #7b6155;
+        font-size: 15px;
+      }
+      .hero-citation {
+        margin-top: 18px;
+        margin-bottom: 0;
+        font-size: 13px;
+        color: #7b6155;
+      }
+      .hero-side-panel {
+        display: grid;
+        gap: 16px;
+      }
+      .mini-chart-card,
+      .stat-card,
+      .fact-column,
+      .callout-box,
+      .tool-card,
+      .data-sources-details {
+        background: #fffdfb;
+        border: 1px solid #F0D5BC;
+        border-radius: 22px;
+        box-shadow: 0 12px 30px rgba(153, 60, 29, 0.06);
+      }
+      .mini-chart-card {
+        padding: 20px 20px 18px;
+      }
+      .mini-chart-card h3,
+      .fact-column h3,
+      .callout-box h3,
+      .tool-card h3,
+      .tools-section h2,
+      .section-heading h2 {
+        margin-top: 0;
+        color: #2f211c;
+      }
+      .mini-chart-caption {
+        color: #6d554b;
+        line-height: 1.5;
+        margin-bottom: 16px;
+      }
+      .coverage-bars {
+        display: grid;
+        gap: 12px;
+      }
+      .coverage-row {
+        display: grid;
+        gap: 7px;
+      }
+      .coverage-label-wrap {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #5c463c;
+      }
+      .coverage-track {
+        height: 12px;
+        border-radius: 999px;
+        background: #f8e7d9;
+        overflow: hidden;
+      }
+      .coverage-fill {
+        height: 100%;
+        border-radius: 999px;
+      }
+      .fill-mcv1 {
+        background: linear-gradient(90deg, #c86335 0%, #993C1D 100%);
+      }
+      .fill-mcv2 {
+        background: linear-gradient(90deg, #d48655 0%, #b7512d 100%);
+      }
+      .fill-threshold {
+        background: linear-gradient(90deg, #7a8f66 0%, #56734c 100%);
+      }
+      .threshold-track {
+        background: #e8efdf;
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .stat-card {
+        padding: 18px 16px;
+        min-height: 132px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .stat-value {
+        font-size: 33px;
+        line-height: 1;
+        font-weight: 800;
+        color: #993C1D;
+      }
+      .stat-label {
+        font-size: 14px;
+        line-height: 1.5;
+        color: #5b483f;
+      }
+      .fast-facts-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+      .fact-column {
+        padding: 22px;
+      }
+      .fact-tag,
+      .callout-tag,
+      .tool-tag,
+      .section-kicker {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: #993C1D;
+        background: #f9e3d3;
+        border-radius: 999px;
+        padding: 6px 10px;
+        margin-bottom: 12px;
+      }
+      .fact-column p,
+      .callout-box p,
+      .tool-card p,
+      .data-source-item p,
+      .data-source-item li {
+        color: #5b483f;
+        line-height: 1.7;
+      }
+      .callout-box {
+        padding: 24px 24px 22px;
+        margin-bottom: 20px;
+      }
+      .callout-box h3 {
+        margin-bottom: 10px;
+        font-size: 26px;
+        line-height: 1.25;
+      }
+      .tools-section {
+        margin-top: 8px;
+      }
+      .section-heading {
+        margin-bottom: 14px;
+      }
+      .section-heading h2 {
+        margin-bottom: 0;
+      }
+      .tool-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .tool-card {
+        padding: 22px;
+        min-height: 210px;
+      }
+      .data-sources-section {
+        margin-top: 20px;
+      }
+      .data-sources-details {
+        padding: 16px 18px;
+      }
+      .data-sources-details summary {
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 700;
+        color: #2f211c;
+      }
+      .data-source-item {
+        margin-top: 16px;
+      }
+      .data-source-item ul {
+        padding-left: 20px;
+        margin-bottom: 0;
+      }
+      @media (max-width: 767px) {
+        .landing-hero {
+          padding: 24px 20px;
+        }
+        .landing-hero h1 {
+          font-size: 32px;
+        }
+        .hero-lead {
+          font-size: 17px;
+        }
+        .stat-grid,
+        .fast-facts-strip,
+        .tool-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (min-width: 768px) and (max-width: 991px) {
+        .stat-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    "))
+  ),
+  titlePanel("Global Measles Incidence and Vaccination Dashboard"),
+  tabsetPanel(
+    id = "main_view",
+    selected = "Overview",
+    tabPanel("Overview", landing_page_ui),
+    tabPanel("Dashboard", dashboard_ui)
   )
 )
 
@@ -177,6 +660,10 @@ server <- function(input, output, session) {
       load_dataset()
     }
   }, once = TRUE)
+
+  observeEvent(input$enter_dashboard, {
+    updateTabsetPanel(session, "main_view", selected = "Dashboard")
+  })
 
   output$year_slider_ui <- renderUI({
     data <- dataset_state$data
