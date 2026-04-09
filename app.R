@@ -854,6 +854,14 @@ server <- function(input, output, session) {
   output$trend_plot <- renderPlotly({
     plot_data <- create_trend_plot_data(selected_data())
 
+    country_levels <- unique(plot_data$location)
+    measure_levels <- c("Cases", "MCV1", "MCV2")
+    plot_data <- plot_data |>
+      dplyr::mutate(
+        location = factor(location, levels = country_levels),
+        series = factor(series, levels = measure_levels)
+      )
+
     plot <- ggplot(
       plot_data,
       aes(
@@ -861,10 +869,11 @@ server <- function(input, output, session) {
         y = value,
         color = location,
         linetype = series,
+        group = interaction(location, series),
         text = paste0(
           "Country: ", location,
           "<br>Year: ", year,
-          "<br>Series: ", series,
+          "<br>Measure: ", series,
           "<br>Value: ", comma(round(value, 2))
         )
       )
@@ -872,33 +881,53 @@ server <- function(input, output, session) {
 
     plot <- plot +
       geom_smooth(
-        aes(
-          x = year,
-          y = value,
-          group = interaction(location, series),
-          color = location
-        ),
         method = "lm",
         se = FALSE,
         linewidth = 0.8,
-        linetype = "dashed",
-        alpha = 0.7,
-        inherit.aes = FALSE,
+        alpha = 0.35,
+        show.legend = FALSE,
         na.rm = TRUE
       ) +
-      geom_line(linewidth = 0.9, na.rm = TRUE) +
-      geom_point(size = 1.4, na.rm = TRUE) +
+      geom_line(linewidth = 1, alpha = 0.8, na.rm = TRUE) +
+      geom_point(size = 2.6, alpha = 0.7, na.rm = TRUE) +
       facet_wrap(~metric, ncol = 1, scales = "free_y") +
       scale_x_continuous(breaks = pretty_breaks()) +
+      scale_linetype_manual(
+        values = c("Cases" = "solid", "MCV1" = "longdash", "MCV2" = "dotdash"),
+        breaks = measure_levels
+      ) +
       labs(
         x = "Year",
         y = NULL,
         color = "Country",
-        linetype = "Series",
+        linetype = "Measure",
         title = "Reported measles cases and vaccination coverage over time"
       ) +
       theme_minimal(base_size = 12) +
-      theme(legend.position = "bottom")
+      guides(
+        color = guide_legend(
+          order = 1,
+          override.aes = list(
+            linetype = rep("solid", length(country_levels)),
+            shape = 16,
+            alpha = 1,
+            linewidth = 1
+          )
+        ),
+        linetype = guide_legend(
+          order = 2,
+          override.aes = list(
+            color = "gray35",
+            shape = NA,
+            alpha = 1,
+            linewidth = 1.1
+          )
+        )
+      ) +
+      theme(
+        legend.position = "bottom",
+        legend.box = "vertical"
+      )
 
     ggplotly(plot, tooltip = "text")
   })
